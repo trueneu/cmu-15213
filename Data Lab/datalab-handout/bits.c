@@ -131,7 +131,8 @@ NOTES:
 
 
 #endif
-/* 
+
+/*
  * bitAnd - x&y using only ~ and | 
  *   Example: bitAnd(6, 5) = 4
  *   Legal ops: ~ |
@@ -139,9 +140,10 @@ NOTES:
  *   Rating: 1
  */
 int bitAnd(int x, int y) {
-	return ~(~x | ~y);
+    return ~(~x | ~y);
 }
-/* 
+
+/*
  * getByte - Extract byte n from word x
  *   Bytes numbered from 0 (LSB) to 3 (MSB)
  *   Examples: getByte(0x12345678,1) = 0x56
@@ -150,9 +152,11 @@ int bitAnd(int x, int y) {
  *   Rating: 2
  */
 int getByte(int x, int n) {
-	return (x >> (n << 3)) & 0xFF;
+    int n_times_8 = n << 3;
+    return (x >> n_times_8) & 0xff;
 }
-/* 
+
+/*
  * logicalShift - shift x to the right by n, using a logical shift
  *   Can assume that 0 <= n <= 31
  *   Examples: logicalShift(0x87654321,4) = 0x08765432
@@ -161,11 +165,24 @@ int getByte(int x, int n) {
  *   Rating: 3 
  */
 int logicalShift(int x, int n) {
-	int mask = 0x01 << (32 + 1 + ~n);
-	mask = mask + ~0;
-	return (x >> n) & mask;
-	//return ((~0x00) << ((~n) + 1 + 32)) & (x >> n);
+    /* 15 operations
+     * The biggest problem here is that we can't << to the width of operand
+     * So we have to somehow make an "if" (n == 0) and (n > 0) without actually using an if
+     * So to do that we're using property of !n == 0 for n > 0, and !n == 1 for n == 0,
+     * consequentially ~!n + 1 == -1 for n == 0, ~!n + 1 == 0 for n > 0 (due to overflow)
+     * so for n > 0, we're performing -1 << (width - n), ~
+     * for n == 0, it's 0 << 0, ~
+     * To get first zero for this special case, we do ~!!n + 1,
+     * to get the second one, we do (width - n) - (width - n), or (width - n) + (n - width),
+     * to nullify the second (n - width), we bitwise AND it against -1 for n == 0, and against 0 for n > 0
+     */
+    int x_arithm_shift = x >> n;
+    int _32_minus_n = 32 + 1 + ~n;
+    int _n_minus_32 = n + 1 + ~32;
+    int n_HO_zeroes = ~( ~!!n + 1 << (_32_minus_n + (_n_minus_32 & (~!n + 1) ) ) );
+    return (x_arithm_shift & n_HO_zeroes);
 }
+
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -174,9 +191,48 @@ int logicalShift(int x, int n) {
  *   Rating: 4
  */
 int bitCount(int x) {
-  return 2;
+    /*
+     * Absolutely no ideas how to it in 40 ops without loops. c += x & 1; x >>= 1; takes 3 * 32 = 96 operations.
+     * "Optimized" x & (x - 1) until x == 0 requires conditions.
+     */
+    int c = 0;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+    c += x & 1; x >>= 1;
+
+    return c;
 }
-/* 
+
+/*
  * bang - Compute !x without using !
  *   Examples: bang(3) = 0, bang(0) = 1
  *   Legal ops: ~ & ^ | + << >>
@@ -184,18 +240,33 @@ int bitCount(int x) {
  *   Rating: 4 
  */
 int bang(int x) {
-  return 2;
+    /* Fold the number to the right
+     * So if there is at least one 1 in binary representation, it stays there
+     * Otherwise it's a zero.
+     */
+
+    x |= x >> 16;
+    x |= x >> 8;
+    x |= x >> 4;
+    x |= x >> 2;
+    x |= x >> 1;
+    return ~(x & 1) & 1;
 }
-/* 
+
+/*
  * tmin - return minimum two's complement integer 
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 4
  *   Rating: 1
  */
 int tmin(void) {
-  return 0x01 << (32 + ~0);
+    /*
+     * Follow the definition
+     */
+    return 1 << 31;
 }
-/* 
+
+/*
  * fitsBits - return 1 if x can be represented as an 
  *  n-bit, two's complement integer.
  *   1 <= n <= 32
@@ -205,9 +276,20 @@ int tmin(void) {
  *   Rating: 2
  */
 int fitsBits(int x, int n) {
-  return 2;
+    /*
+     * Straightforwardly find tmax and tmin, using the fact that -n = ~n + 1,
+     * then if either of tmax - x < 0 and x - tmin < 0 is true,
+     * then number doesn't fit
+     *
+     */
+    int tmax = (0x01 << (n + ~0x0)) + ~0x0;
+    int sign_bit = 0x01 << 31;
+    int tmax_minus_x = (tmax + ~x + 1);
+    int x_minus_tmin = (x + tmax + 1);
+    return !((x_minus_tmin | tmax_minus_x) & sign_bit);
 }
-/* 
+
+/*
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
  *  Round toward zero
  *   Examples: divpwr2(15,1) = 7, divpwr2(-33,4) = -2
@@ -216,9 +298,18 @@ int fitsBits(int x, int n) {
  *   Rating: 2
  */
 int divpwr2(int x, int n) {
-    return 2;
+    /*
+     * To do this, we must add a bias of 2^n, but only when we're dealing with a negative number AND
+     * we're suffering precision loss when performing the division, e.g.
+     * -15 >> 2 == -4, should be -3, so we add 2^2, and get -11 >> 2 == -3
+     * but -16 >> 2 == -4 and should be -4, so we don't add anything
+     */
+    int sign_x = x >> 31;
+    int precision_loss = !!(x & ~(~0x0 << n));
+    return (x + (sign_x & precision_loss << n)) >> n;
 }
-/* 
+
+/*
  * negate - return -x 
  *   Example: negate(1) = -1.
  *   Legal ops: ! ~ & ^ | + << >>
@@ -226,9 +317,13 @@ int divpwr2(int x, int n) {
  *   Rating: 2
  */
 int negate(int x) {
-  return ~x + 1;
+    /*
+     * We already did this a number of times.
+     */
+    return ~x + 1;
 }
-/* 
+
+/*
  * isPositive - return 1 if x > 0, return 0 otherwise 
  *   Example: isPositive(-1) = 0.
  *   Legal ops: ! ~ & ^ | + << >>
@@ -236,9 +331,15 @@ int negate(int x) {
  *   Rating: 3
  */
 int isPositive(int x) {
-  return 2;
+    /*
+     * The only quirk here is to return 0 for 0, as it is not greater than 0
+     * The only value !!x == 0 for is 0 itself.
+     */
+    int sign_x = x >> 31;
+    return !(1 & sign_x) & !!x;
 }
-/* 
+
+/*
  * isLessOrEqual - if x <= y  then return 1, else return 0 
  *   Example: isLessOrEqual(4,5) = 1.
  *   Legal ops: ! ~ & ^ | + << >>
@@ -246,8 +347,24 @@ int isPositive(int x) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+    /*
+     * Fails on corner cases like MAX_INT vs MIN_INT and vice versa.
+     */
+    int y_minus_x = y + ~x + 1;
+    int x_minus_y = x + ~y + 1;
+
+    int x_greater_than_y = \
+        (y_minus_x >> 31) | \
+        ( !(x & (0x01 << 31)) & !!(y & (0x01 << 31))) | \
+        !(!(y_minus_x >> 31) & !(x_minus_y >> 31));
+
+    int x_less_or_eq = \
+        (x_minus_y >> 31) | \
+        ( !!(x & (0x01 << 31)) & !(y & (0x01 << 31))) | \
+        (!(y_minus_x >> 31) & !(x_minus_y >> 31));
+    return !!x_less_or_eq;
 }
+
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
  *   Example: ilog2(16) = 4
@@ -256,9 +373,43 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4
  */
 int ilog2(int x) {
-  return 2;
+    int acc = 0;
+    x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1); x >>= 1;
+    acc = acc + (!x ^ 1);
+    return acc;
 }
-/* 
+
+/*
  * float_neg - Return bit-level equivalent of expression -f for
  *   floating point argument f.
  *   Both the argument and result are passed as unsigned int's, but
@@ -270,9 +421,20 @@ int ilog2(int x) {
  *   Rating: 2
  */
 unsigned float_neg(unsigned uf) {
- return 2;
+    /*
+     * Pretty straightforward
+     */
+
+    int exponent = (uf & (0xff << 23)) >> 23;
+    int significand = uf & (0x7fffff);
+    if ((exponent == 0xff) && (significand != 0x0)) { // NaN test
+        return uf;
+    } else {
+        return (uf ^ (0x80 << 24));
+    }
 }
-/* 
+
+/*
  * float_i2f - Return bit-level equivalent of expression (float) x
  *   Result is returned as unsigned int, but
  *   it is to be interpreted as the bit-level representation of a
@@ -282,9 +444,35 @@ unsigned float_neg(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-  return 2;
+    /*
+     * Gives errors by one for some reason
+     */
+
+    if (x == 0 ) return x;
+
+    int neg = x < 0;
+    if (neg) x = -x;
+    int log_x = 31;
+    unsigned check = 1 << 31;
+    while (!(x & check)) {
+        log_x--;
+        check >>= 1;
+    };
+    x ^= check;
+
+    unsigned sign = neg;
+    unsigned exponent = log_x + 127;
+    unsigned significand;
+    if (log_x > 23) {
+        significand = x >> (log_x - 23);
+    } else {
+        significand = x << (23 - log_x);
+    }
+
+    return (sign << 31) | (exponent << 23) | significand;
 }
-/* 
+
+/*
  * float_twice - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
  *   Both the argument and result are passed as unsigned int's, but
@@ -296,5 +484,27 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  return 2;
+    /*
+     * Pretty straightforward solution
+     */
+    if (uf == 0 || uf == 0x80000000) return uf;
+
+    int sign = uf & (0x01 << 31);
+    int exponent = (uf & (0xff << 23)) >> 23;
+    int significand = uf & (0x7fffff);
+    if (exponent == 0xff) { // NaN/inf test
+        return uf;
+    }
+
+    if (exponent == 0) {
+        significand <<= 1;
+    } else {
+        exponent++;
+    }
+
+    uf ^= exponent << 23;
+    if (exponent == 0xff) {
+        return sign | (exponent << 23);
+    }
+    return sign | (exponent << 23) | significand;
 }
