@@ -284,9 +284,11 @@ int fitsBits(int x, int n) {
      */
     int tmax = (0x01 << (n + ~0x0)) + ~0x0;
     int sign_bit = 0x01 << 31;
-    int tmax_minus_x = (tmax + ~x + 1);
-    int x_minus_tmin = (x + tmax + 1);
-    return !((x_minus_tmin | tmax_minus_x) & sign_bit);
+    int x_neg = x & sign_bit;
+    int tmax_minus_x = (tmax -x );
+    int x_minus_tmin = (x - ~tmax);
+
+    return !(x ^ tmax) | !(x ^ ~tmax) | !(x_neg & x_minus_tmin) | !(~!x_neg & tmax_minus_x);
 }
 
 /*
@@ -350,19 +352,11 @@ int isLessOrEqual(int x, int y) {
     /*
      * Fails on corner cases like MAX_INT vs MIN_INT and vice versa.
      */
-    int y_minus_x = y + ~x + 1;
     int x_minus_y = x + ~y + 1;
-
-    int x_greater_than_y = \
-        (y_minus_x >> 31) | \
-        ( !(x & (0x01 << 31)) & !!(y & (0x01 << 31))) | \
-        !(!(y_minus_x >> 31) & !(x_minus_y >> 31));
-
-    int x_less_or_eq = \
-        (x_minus_y >> 31) | \
-        ( !!(x & (0x01 << 31)) & !(y & (0x01 << 31))) | \
-        (!(y_minus_x >> 31) & !(x_minus_y >> 31));
-    return !!x_less_or_eq;
+    int x_minus_y_neg = !!(x_minus_y & (1 << 31));
+    int x_neg = !!(x & (1 << 31));
+    int diff_signs = !!((x ^ y) & (1 << 31));
+    return (diff_signs & x_neg) | (!diff_signs & x_minus_y_neg) | !(x ^ y);
 }
 
 /*
